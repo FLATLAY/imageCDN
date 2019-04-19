@@ -10,6 +10,7 @@
   "author": "MaryamMahmoudi",
   "license": "ISC",
   "dependencies": {
+    "aws-s3": "^2.0.5",
     "aws-sdk": "^2.439.0",
     "base64-stream": "^1.0.0",
     "body-parser": "^1.18.3",
