@@ -1,130 +1,135 @@
-// index.js
 require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 
 const app = express();
 const port = process.env.PORT;
-const router = express.Router();
 app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({extended: true}));
-
-app.use(express.static('public'));
-app.use('/upload', router);
+app.use(bodyParser.urlencoded({
+	extended: true
+}));
 
 app.listen(port, function () {
-  console.log('Server is running on PORT',port);
+	console.log('Server is running on PORT', port);
 });
 
 const upload = require('./uploadMiddleware.js');
 var crypto = require("crypto");
-var multer = require("multer");
-var path = require("path");
 var fs = require('fs');
 const sharp = require('sharp');
-const awsS3 = require('aws-s3');
+const AWS = require('aws-sdk');
 
-//~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.
-/*const aws = require("aws-sdk");
-aws.config.update({
-  region: process.env.REGION // region of your bucket
-});*/
-//~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.
+const s3 = new AWS.S3({
+	region: process.env.REGION,
+	accessKeyId: process.env.ACCESSKEYID,
+	secretAccessKey: process.env.SECRETACCESSKEY
+});
 
-app.post("/upload", upload.single("image"), function(req, res) {
-	var path =res.req.file.path;
+app.post("/upload", upload.single("image"), function (req, res) {
+	var path = res.req.file.path;
+
 	function base64_encode(file) {
-      var bitmap = fs.readFileSync(file);
-      // convert binary data to base64 encoded string
-      return new Buffer.from(bitmap).toString('base64');
-    }
-   	var encodedFile= base64_encode(path);
-   	var checksum = crypto
-      .createHash("SHA256")
-      .update(encodedFile)
-      .digest("hex");
-	//console.log(checksum);
-	var response={}
-	var destination= res.req.file.destination;
-	var imageNameOriginal= destination + "/" + checksum  ;
-	var imageNameSmall= destination + "/" + checksum + "_small";
-	var smallFileName = checksum + "_small";
-	var imageNameLarge= destination + "/" + checksum + "_st";
-	var largeFileName = checksum + "_st";
-	return new Promise(function(resolve, reject) {
-		for (var i = 0; i < 3; i++) {
-			if (imageNameSmall) {
+		var bitmap = fs.readFileSync(file);
+		// convert binary data to base64 encoded string
+		return new Buffer.from(bitmap).toString('base64');
+	}
+	var encodedFile = base64_encode(path);
+	var checksum = crypto
+		.createHash("SHA256")
+		.update(encodedFile)
+		.digest("hex");
+
+	var response = {}
+	var destination = res.req.file.destination;
+
+	//This object holds images to be uploaded
+	var images = [];
+
+	var imagePathOriginal = path;
+	var imagePathSmall = destination + "\\" + checksum + "_sm";
+	var imagePathLarge = destination + "\\" + checksum + "_st";
+
+	var imageNameOriginal = checksum;
+	var imageNameSmall = imageNameOriginal + "_sm";
+	var imageNameLarge = imageNameOriginal + "_st";
+
+
+	//addding image files and their location in an array to facilitate upload
+	images.push({
+		"path": imagePathOriginal,
+		"name": imageNameOriginal,
+		"type":"original"
+	})
+	images.push({
+		"path": imagePathSmall,
+		"name": imageNameSmall,
+		"type":"small"
+	})
+	images.push({
+		"path": imagePathLarge,
+		"name": imageNameLarge,
+		"type":"standard"
+	})
+
+	return new Promise(function (resolve, reject) {
+		//creating thumbnail
+		sharp(path)
+			.resize(200, 200)
+			.toBuffer()
+			.then(data => {
+				fs.writeFileSync(imagePathSmall, data);
+				response.small = "Successful";
+
+
+				//creating standard size
 				sharp(path)
-	    			.resize(200,200)
-	    			.toBuffer()
-	    			.then( data => {
-	        		fs.writeFileSync(imageNameSmall, data);
-					const config = {
-		    		bucketName: 'upload-file-flatlay',
-					    region: process.env.REGION ,
-					    accessKeyId:  process.env.ACCESSKEYID,
-					    secretAccessKey: process.env.SECRETACCESSKEY
-					}
-					// const S3Client = new awsS3(config);
-					// S3Client
-					//     .uploadFile(imageNameSmall, smallFileName)
-					//     .then(data => console.log(data))
-					//     .catch(err => console.error(err));
-					response.message = "post Successful";
-	        		resolve(response);
+					.resize(1080, 1080)
+					.toBuffer()
+					.then(data => {
+						fs.writeFileSync(imagePathLarge, data);
+						
+
+						//uploading to s3
+						images.forEach(function (element) {
+							console.log(element.path);
+							fs.readFile(element.path, (err, data) => {
+								if (err) throw err;
+								const params = {
+									Bucket: 'upload-file-flatlay', // bucket name
+									Key: element.name, // file name
+									Body: data
+								};
+								s3.upload(params, function (s3Err, data) {
+									if (s3Err) throw s3Err
+									console.log(`File uploaded successfully at ${data.Location}`)
+									response[element.type] = data.Location;
+									//just a lazy hack for making response assynchronous
+									if(element.type == "standard"){ 
+										response.message = "post Successful";
+										res.send(response);
+										resolve(response);
+									}
+									fs.unlink(element.path, function (err) {
+										if (err) {
+											console.error(err);
+										}
+										console.log(element.name + ' has been Deleted Locally');
+									});
+								});
+							});
+						});
+
+						
 					})
-	    		.catch( err => {
-	        	console.log(err);
-	        	reject (err);
-	    		});
+					.catch(err => {
+						console.log(err);
+						reject(err);
+					});
+			})
+			.catch(err => {
+				console.log(err);
+				reject(err);
+			});
 
-			} if(imageNameLarge){
-			sharp(path)
-		    .resize(1080,1080)
-		    .toBuffer()
-		    .then( data => {
-		        fs.writeFileSync(imageNameLarge, data);
-				const config = {
-		    		bucketName: 'upload-file-flatlay',
-				    region: process.env.REGION ,
-				    accessKeyId:  process.env.ACCESSKEYID,
-				    secretAccessKey: process.env.SECRETACCESSKEY
-				}
-
-
-				var FormData = require('form-data');
-				var form = new FormData();
-				form.append('file', fs.createReadStream('/home/mrm/Desktop/Proj/S3-Upload-image/uploads/download.jpeg'));
-
-				
-
-				const S3Client = new awsS3(config);
-		 		S3Client
-			    .uploadFile(form)
-			    .then(data => console.log(data))
-			    .catch(err => console.error(err));
-					response.message = "post Successful";
-			        resolve(response);
-		    	})
-		    .catch( err => {
-		        console.log(err);
-		        reject (err);
-		    });
-		} else {	
-			const config = {
-		    	bucketName: 'upload-file-flatlay', 
-				region: process.env.REGION ,
-				accessKeyId:  process.env.ACCESSKEYID,
-				secretAccessKey: process.env.SECRETACCESSKEY
-			}
-/*			const S3Client = new awsS3(config);
-		 	S3Client
-			    .uploadFile(path, imageNameOriginal)
-			    .then(data => console.log(data))
-			    .catch(err => console.error(err));*/
-				response.message = "post Successful";
-		        resolve(response);
-		}
-	} //end of for
-	});//Promise
+	});
 });
