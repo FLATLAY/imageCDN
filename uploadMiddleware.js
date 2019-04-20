@@ -2,7 +2,7 @@ var crypto = require("crypto");
 var multer = require("multer");
 var path = require("path");
 var fs = require('fs');
-const multerS3 = require("multer-s3");
+//const multerS3 = require("multer-s3");
 //~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.~.
 //for upload Image
 //destination: Indicates where you want to save your files
