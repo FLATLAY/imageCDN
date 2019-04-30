@@ -74,7 +74,7 @@ app.post("/upload", upload.single("image"), function (req, res) {
 	return new Promise(function (resolve, reject) {
 		//creating thumbnail
 		sharp(path)
-			.resize(200, 200)
+			.resize(300, 300)
 			.toBuffer()
 			.then(data => {
 				fs.writeFileSync(imagePathSmall, data);
