@@ -49,8 +49,8 @@ app.post("/upload", upload.single("image"), function (req, res) {
 	var imagePathSmall = destination + "\\" + checksum + "_sm";
 	var imagePathLarge = destination + "\\" + checksum + "_st";
 
-	var imageNameOriginal = checksum;
-	var imageNameSmall = imageNameOriginal + "_sm";
+	var imageNameSmall  = checksum;
+	var imageNameOriginal = imageNameOriginal + "_or";
 	var imageNameLarge = imageNameOriginal + "_st";
 
 
