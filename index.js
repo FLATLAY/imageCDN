@@ -4,10 +4,6 @@ const bodyParser = require('body-parser');
 
 const app = express();
 const port = process.env.PORT;
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({
-	extended: true
-}));
 
 app.listen(port, function () {
 	console.log('Server is running on PORT', port);
@@ -50,8 +46,8 @@ app.post("/upload", upload.single("image"), function (req, res) {
 	var imagePathLarge = destination + "\\" + checksum + "_st";
 
 	var imageNameSmall  = checksum;
-	var imageNameOriginal = imageNameOriginal + "_or";
-	var imageNameLarge = imageNameOriginal + "_st";
+	var imageNameOriginal = imageNameSmall + "_or";
+	var imageNameLarge = imageNameSmall + "_st";
 
 
 	//addding image files and their location in an array to facilitate upload
