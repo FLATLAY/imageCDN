@@ -50,7 +50,7 @@ app.post("/uploadB64", async function (req, res) {
 		.createHash("SHA256")
 		.update(req.body.data)
 		.digest("hex");
-	var base64Data = req.body.data.replace(/^data:image\/png;base64,/, "");
+	var base64Data = req.body.data.replace(/^data:image\/\w+;base64,/, "");
 	var path = __dirname + "/uploads/" + checksum;
 	await fs.writeFile(path, base64Data, 'base64', function (err) {
 		console.log("Writing Errors: " + err);
