@@ -43,8 +43,6 @@ app.post("/upload", upload.single("image"), function (req, res) {
 });
 
 app.post("/uploadB64", async function (req, res) {
-
-
 	var origin = __dirname + "/uploads";
 	var checksum = crypto
 		.createHash("SHA256")
@@ -56,7 +54,6 @@ app.post("/uploadB64", async function (req, res) {
 		console.log("Writing Errors: " + err);
 		uploadPhoto(path, origin, checksum, res, 1);
 	});
-
 });
 
 function uploadPhoto(path, origin, checksum, res, isB64) {
@@ -71,10 +68,6 @@ function uploadPhoto(path, origin, checksum, res, isB64) {
 	var imageNameSmall = checksum;
 	var imageNameOriginal = imageNameSmall + "_or";
 	var imageNameLarge = imageNameSmall + "_st";
-
-
-
-
 
 	//addding image files and their location in an array to facilitate upload
 	images.push({
@@ -113,7 +106,10 @@ function uploadPhoto(path, origin, checksum, res, isB64) {
 						images.forEach(function (element) {
 							console.log(element.path);
 							fs.readFile(element.path, (err, data) => {
-								if (err) throw err;
+								if (err){
+									console.log(err);
+									reject(err);
+								}
 								const params = {
 									Bucket: 'upload-file-flatlay', // bucket name
 									Key: element.name, // file name
