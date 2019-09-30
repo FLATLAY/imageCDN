@@ -11,7 +11,7 @@ app.use(bodyParser.urlencoded({
 	limit: '50mb',
 	extended: true
 }));
-
+var countOutputTypes = 0 //to count the output types
 const port = process.env.PORT;
 app.listen(port, function () {
 	console.log('Server is running on PORT', port);
@@ -39,7 +39,9 @@ app.post("/upload", upload.single("image"), function (req, res) {
 		.createHash("SHA256")
 		.update(encodedFile)
 		.digest("hex");
-	uploadPhoto(path, origin, checksum, res, 0);
+
+	var extension=	getBase64ImageExtension (encodedFile);
+	uploadPhoto(path, origin, checksum, res, 0,extension);
 });
 
 app.post("/uploadB64", async function (req, res) {
@@ -48,15 +50,19 @@ app.post("/uploadB64", async function (req, res) {
 		.createHash("SHA256")
 		.update(req.body.data)
 		.digest("hex");
+	var extension=	getBase64ImageExtension (req.body.data);
 	var base64Data = req.body.data.replace(/^data:image\/\w+;base64,/, "");
+
 	var path = __dirname + "/uploads/" + checksum;
 	await fs.writeFile(path, base64Data, 'base64', function (err) {
 		console.log("Writing Errors: " + err);
-		uploadPhoto(path, origin, checksum, res, 1);
+		uploadPhoto(path, origin, checksum, res, 1,extension);
+		uploadPhoto
 	});
 });
 
-function uploadPhoto(path, origin, checksum, res, isB64) {
+function uploadPhoto(path, origin, checksum, res, isB64,extension) {
+	console.log(extension);
 	var response = {};
 	//This object holds images to be uploaded
 	var images = [];
@@ -72,17 +78,17 @@ function uploadPhoto(path, origin, checksum, res, isB64) {
 	//addding image files and their location in an array to facilitate upload
 	images.push({
 		"path": imagePathOriginal,
-		"name": imageNameOriginal,
+		"name": imageNameOriginal+extension,
 		"type": "original"
 	})
 	images.push({
 		"path": imagePathSmall,
-		"name": imageNameSmall,
+		"name": imageNameSmall+extension,
 		"type": "small"
 	})
 	images.push({
 		"path": imagePathLarge,
-		"name": imageNameLarge,
+		"name": imageNameLarge+extension,
 		"type": "standard"
 	})
 
@@ -100,27 +106,28 @@ function uploadPhoto(path, origin, checksum, res, isB64) {
 					.toBuffer()
 					.then(data => {
 						fs.writeFileSync(imagePathLarge, data);
-
-
 						//uploading to s3
 						images.forEach(function (element) {
-							console.log(element.path);
+							
 							fs.readFile(element.path, (err, data) => {
 								if (err){
 									console.log(err);
 									reject(err);
 								}
+							
 								const params = {
 									Bucket: 'upload-file-flatlay', // bucket name
 									Key: element.name, // file name
 									Body: data
 								};
+								
 								s3.upload(params, function (s3Err, data) {
 									if (s3Err) throw s3Err
 									console.log(`File uploaded successfully at ${data.Location}`)
 									response[element.type] = data.Location;
 									//just a lazy hack for making response assynchronous
-									if (element.type == "standard") {
+									countOutputTypes ++;
+									if (countOutputTypes == images.length) {
 										response.message = "post Successful";
 										res.send(response);
 										resolve(response);
@@ -148,4 +155,15 @@ function uploadPhoto(path, origin, checksum, res, isB64) {
 			});
 
 	});
+}
+
+function getBase64ImageExtension (data){
+	
+	var extension = ""
+	if(data.charAt(0)=='/') extension = "jpg"
+	else if(data.charAt(0)=='i') extension = "png"
+	else if(data.charAt(0)=='R') extension = "gif"
+	else if(data.charAt(0)=='U') extension = "webp"
+
+	return "."+extension;
 }
