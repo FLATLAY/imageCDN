@@ -103,6 +103,7 @@ function uploadPhoto(path, origin, checksum, res, isB64) {
 
 
 						//uploading to s3
+						var countImagesCopied = 0;
 						images.forEach(function (element) {
 							console.log(element.path);
 							fs.readFile(element.path, (err, data) => {
@@ -113,6 +114,8 @@ function uploadPhoto(path, origin, checksum, res, isB64) {
 								const params = {
 									Bucket: 'upload-file-flatlay', // bucket name
 									Key: element.name, // file name
+									ContentType: 'image/png', 
+									ACL: 'public-read',
 									Body: data
 								};
 								s3.upload(params, function (s3Err, data) {
@@ -120,7 +123,9 @@ function uploadPhoto(path, origin, checksum, res, isB64) {
 									console.log(`File uploaded successfully at ${data.Location}`)
 									response[element.type] = data.Location;
 									//just a lazy hack for making response assynchronous
-									if (element.type == "standard") {
+									countImagesCopied++;
+									
+									if (countImagesCopied == images.length) {
 										response.message = "post Successful";
 										res.send(response);
 										resolve(response);
