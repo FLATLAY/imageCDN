@@ -1,3 +1,4 @@
+const { getLinkPreview } = require('link-preview-js');
 require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
@@ -28,7 +29,6 @@ const s3 = new AWS.S3({
 	accessKeyId: process.env.ACCESSKEYID,
 	secretAccessKey: process.env.SECRETACCESSKEY
 });
-
 app.post("/upload", upload.single("image"), function (req, res) {
 	var path = res.req.file.path;
 	var origin = res.req.file.destination;
@@ -54,6 +54,24 @@ app.post("/uploadB64", async function (req, res) {
 		console.log("Writing Errors: " + err);
 		uploadPhoto(path, origin, checksum, res, 1);
 	});
+});
+
+app.post("/link-preview", function (req, res) {
+	res.setHeader('content-type', 'application/json');
+
+	const response = {};
+	const url = req.body['url'];
+	if (!url) {
+		response.message = 'url query string parameter is not specified';
+		res.send(JSON.stringify(response)).status(400);
+	}
+	getLinkPreview(url)
+		.then((data) => res.json(data))
+		.catch(err => {
+			response.message = 'Error in parsing the specified URL';
+			response.error_detail = err;
+			res.send(response).status(400);
+		});
 });
 
 function uploadPhoto(path, origin, checksum, res, isB64) {
