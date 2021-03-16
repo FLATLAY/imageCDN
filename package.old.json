@@ -1,0 +1,26 @@
+{
+  "name": "imageCDN",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "nodemon index.js"
+  },
+  "keywords": [],
+  "author": "MaryamMahmoudi",
+  "dependencies": {
+    "aws-sdk": "^2.817.0",
+    "body-parser": "^1.19.0",
+    "crypto": "^1.0.1",
+    "dotenv": "^8.2.0",
+    "express": "^4.17.1",
+    "fs": "0.0.1-security",
+    "multer": "^1.4.2",
+    "path": "^0.12.7",
+    "sharp": "^0.25.4",
+    "uniqid": "^4.2.0"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.6"
+  }
+}
