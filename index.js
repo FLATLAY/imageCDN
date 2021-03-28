@@ -62,7 +62,7 @@ app.post("/link-preview", function (req, res) {
 	const response = {};
 	const url = req.body['url'];
 	if (!url) {
-		response.message = 'url query string parameter is not specified';
+		response.message = 'url parameter is not specified in body';
 		res.send(JSON.stringify(response)).status(400);
 	}
 	getLinkPreview(url)
