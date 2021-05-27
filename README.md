@@ -1,3 +1,5 @@
+for fixing problem on installing new npm package
+
 ``rm -rf node_modules/sharp
 npm install sharp@0.25.4
 sudo npm install --unsafe-perm sharp@0.25.4
