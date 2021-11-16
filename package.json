@@ -9,7 +9,7 @@
   "keywords": [],
   "author": "MaryamMahmoudi",
   "dependencies": {
-    "aws-sdk": "^2.439.0",
+    "aws-sdk": "^2.814.0",
     "body-parser": "^1.18.3",
     "crypto": "^1.0.1",
     "dotenv": "^7.0.0",
