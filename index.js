@@ -56,6 +56,24 @@ app.post("/uploadB64", async function (req, res) {
 	});
 });
 
+app.post("/uploadB64file", async function (req, res) {
+	var checksum = crypto
+		.createHash("SHA256")
+		.update(req.body.data)
+		.digest("hex");
+	var matches = req.body.data.match(/^data:([A-Za-z-+/]+);base64,(.+)$/);
+	if (matches.length !== 3)
+		return res.json('Invalid input base64. Valid form: data:{dataType};base64,{base64data}').status(400).end();
+	
+	var base64Data = matches[2];
+	const dataType = matches[1];
+	var path = __dirname + "/uploads/" + checksum;
+	await fs.writeFile(path, base64Data, 'base64', function (err) {
+		console.log("Writing Errors: " + err);
+		uploadFile(path, dataType, checksum, res);
+	});
+});
+
 app.post("/link-preview", function (req, res) {
 	res.setHeader('content-type', 'application/json');
 
@@ -170,5 +188,51 @@ function uploadPhoto(path, origin, checksum, res, isB64) {
 				reject(err);
 			});
 
+	});
+}
+
+function uploadFile(path, dataType, checksum, res) {
+	var response = {};
+
+	var imagePathOriginal = path;
+	var imageNameOriginal = checksum + "_or";
+
+	var file = {
+		"path": imagePathOriginal,
+		"name": imageNameOriginal,
+		"type": "original"
+	};
+
+	return new Promise(function (resolve, reject) {
+		//uploading to s3
+		var element = file;
+		console.log(element.path);
+		fs.readFile(element.path, (err, data) => {
+			if (err) {
+				console.log(err);
+				reject(err);
+			}
+			const params = {
+				Bucket: 'upload-file-flatlay', // bucket name
+				Key: element.name, // file name
+				ContentType: dataType,
+				ACL: 'public-read',
+				Body: data
+			};
+			s3.upload(params, function (s3Err, data) {
+				if (s3Err) throw s3Err
+				console.log(`File uploaded successfully at ${data.Location}`)
+				response[element.type] = data.Location;
+				fs.unlink(element.path, function (err) {
+					if (err) {
+						console.error(err);
+					}
+					console.log(element.name + ' has been Deleted Locally');
+				});
+				response.message = "post Successful";
+				res.send(response);
+				resolve(response);
+			});
+		});
 	});
 }
