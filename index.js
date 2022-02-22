@@ -61,12 +61,16 @@ app.post("/uploadB64file", async function (req, res) {
 		.createHash("SHA256")
 		.update(req.body.data)
 		.digest("hex");
-	var matches = req.body.data.match(/^data:([A-Za-z-+/]+);base64,(.+)$/);
+	var matches = req.body.data.match(/^data:(.+);base64,(.+)$/);
 	if (matches.length !== 3)
 		return res.json('Invalid input base64. Valid form: data:{dataType};base64,{base64data}').status(400).end();
 	
 	var base64Data = matches[2];
 	const dataType = matches[1];
+	const supportedDataTypes = ['application/pdf', 'application/msword'];
+	if (!supportedDataTypes.includes(dataType))
+		return res.json("Invalid base64 data type. Valid types: '" + supportedDataTypes.join("', '") + "'").status(400).end();
+	
 	var path = __dirname + "/uploads/" + checksum;
 	await fs.writeFile(path, base64Data, 'base64', function (err) {
 		console.log("Writing Errors: " + err);
