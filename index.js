@@ -67,7 +67,7 @@ app.post("/uploadB64file", async function (req, res) {
 	
 	var base64Data = matches[2];
 	const dataType = matches[1];
-	const supportedDataTypes = ['application/pdf', 'application/msword'];
+	const supportedDataTypes = ['application/pdf', 'application/msword', 'video/mp4', 'video/avi', 'video/x-m4v'];
 	if (!supportedDataTypes.includes(dataType))
 		return res.json("Invalid base64 data type. Valid types: '" + supportedDataTypes.join("', '") + "'").status(400).end();
 	
