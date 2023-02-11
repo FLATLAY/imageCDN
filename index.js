@@ -13,7 +13,7 @@ app.use(bodyParser.urlencoded({
 	extended: true
 }));
 
-const port = process.env.PORT;
+const port = process.env.PORT || 2021;
 app.listen(port, function () {
 	console.log('Server is running on PORT', port);
 });
@@ -29,6 +29,16 @@ const s3 = new AWS.S3({
 	accessKeyId: process.env.ACCESSKEYID,
 	secretAccessKey: process.env.SECRETACCESSKEY
 });
+
+const checkFileType = (dataType, res) => {
+	const supportedDataTypes = ['application/pdf', 'application/msword', 'video/mp4', 'video/avi', 'video/x-m4v', 'image/jpg', 'image/png'];
+	if (!supportedDataTypes.includes(dataType)) {
+		res.json("Invalid base64 data type. Valid types: '" + supportedDataTypes.join("', '") + "'").status(400).end();
+		return false;
+	}
+	return true;
+};
+
 app.post("/upload", upload.single("image"), function (req, res) {
 	var path = res.req.file.path;
 	var origin = res.req.file.destination;
@@ -40,6 +50,20 @@ app.post("/upload", upload.single("image"), function (req, res) {
 		.update(encodedFile)
 		.digest("hex");
 	uploadPhoto(path, origin, checksum, res, 0);
+});
+
+app.post("/uploadFile", upload.single("file"), function (req, res) {
+	const dataType = res.req.file.mimetype;
+	if (!checkFileType(dataType, res)) return;
+	var path = res.req.file.path;
+	var bitmap = fs.readFileSync(path);
+	// convert binary data to base64 encoded string
+	var encodedFile = new Buffer.from(bitmap).toString('base64');
+	var checksum = crypto
+		.createHash("SHA256")
+		.update(encodedFile)
+		.digest("hex");
+	uploadFile(path, dataType, checksum, res);
 });
 
 app.post("/uploadB64", async function (req, res) {
@@ -67,9 +91,7 @@ app.post("/uploadB64file", async function (req, res) {
 	
 	var base64Data = matches[2];
 	const dataType = matches[1];
-	const supportedDataTypes = ['application/pdf', 'application/msword', 'video/mp4', 'video/avi', 'video/x-m4v'];
-	if (!supportedDataTypes.includes(dataType))
-		return res.json("Invalid base64 data type. Valid types: '" + supportedDataTypes.join("', '") + "'").status(400).end();
+	if (!checkFileType(dataType, res)) return;
 	
 	var path = __dirname + "/uploads/" + checksum;
 	await fs.writeFile(path, base64Data, 'base64', function (err) {
