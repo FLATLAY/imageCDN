@@ -30,16 +30,42 @@ const s3 = new AWS.S3({
 	secretAccessKey: process.env.SECRETACCESSKEY
 });
 
-const checkFileType = (dataType, res) => {
-	const supportedDataTypes = ['application/pdf', 'application/msword', 'video/mp4', 'video/avi', 'video/x-m4v', 'image/jpg', 'image/png'];
-	if (!supportedDataTypes.includes(dataType)) {
-		res.json("Invalid base64 data type. Valid types: '" + supportedDataTypes.join("', '") + "'").status(400).end();
-		return false;
-	}
-	return true;
+const checkFileType = (dataType) => {
+	const supportedDataTypes = [
+		{
+			mimeType: 'application/pdf',
+			extension: '.pdf'
+		}, {
+			mimeType: 'application/msword',
+			extension: '.doc'
+		}, {
+			mimeType: 'video/mp4',
+			extension: '.mp4'
+		}, {
+			mimeType: 'video/avi',
+			extension: '.avi'
+		}, {
+			mimeType: 'video/x-m4v',
+			extension: '.m4v'
+		}, {
+			mimeType: 'image/jpg',
+			extension: '.jpg'
+		}, {
+			mimeType: 'image/png',
+			extension: '.png'
+		}, {
+			mimeType: 'image/jpeg',
+			extension: '.jpeg'
+		}
+	];
+	const matchedType = supportedDataTypes.find(({ mimeType }) => mimeType === dataType);
+	if (!matchedType) return false;
+	return matchedType;
 };
 
 app.post("/upload", upload.single("image"), function (req, res) {
+	const dataType = res.req.file.mimetype;
+	const matchedType = checkFileType(dataType);
 	var path = res.req.file.path;
 	var origin = res.req.file.destination;
 	var bitmap = fs.readFileSync(path);
@@ -49,12 +75,14 @@ app.post("/upload", upload.single("image"), function (req, res) {
 		.createHash("SHA256")
 		.update(encodedFile)
 		.digest("hex");
-	uploadPhoto(path, origin, checksum, res, 0);
+	uploadPhoto(path, origin, checksum, matchedType ? matchedType.extension : '', res);
 });
 
 app.post("/uploadFile", upload.single("file"), function (req, res) {
 	const dataType = res.req.file.mimetype;
-	if (!checkFileType(dataType, res)) return;
+	const matchedType = checkFileType(dataType);
+	if (!matchedType)
+		return res.json("Invalid data type").status(400).end();
 	var path = res.req.file.path;
 	var bitmap = fs.readFileSync(path);
 	// convert binary data to base64 encoded string
@@ -63,7 +91,7 @@ app.post("/uploadFile", upload.single("file"), function (req, res) {
 		.createHash("SHA256")
 		.update(encodedFile)
 		.digest("hex");
-	uploadFile(path, dataType, checksum, res);
+	uploadFile(path, dataType, checksum, matchedType.extension, res);
 });
 
 app.post("/uploadB64", async function (req, res) {
@@ -72,11 +100,18 @@ app.post("/uploadB64", async function (req, res) {
 		.createHash("SHA256")
 		.update(req.body.data)
 		.digest("hex");
-	var base64Data = req.body.data.replace(/^data:image\/\w+;base64,/, "");
+		
+	const matches = req.body.data.match(/^data:(.+);base64,(.+)$/);
+	if (matches.length !== 3)
+		return res.json('Invalid input base64. Valid form: data:{dataType};base64,{base64data}').status(400).end();
+	const base64Data = matches[2];
+	const dataType = matches[1];
+	const matchedType = checkFileType(dataType);
+
 	var path = __dirname + "/uploads/" + checksum;
 	await fs.writeFile(path, base64Data, 'base64', function (err) {
 		console.log("Writing Errors: " + err);
-		uploadPhoto(path, origin, checksum, res, 1);
+		uploadPhoto(path, origin, checksum, matchedType ? matchedType.extension : '', res);
 	});
 });
 
@@ -91,12 +126,14 @@ app.post("/uploadB64file", async function (req, res) {
 	
 	var base64Data = matches[2];
 	const dataType = matches[1];
-	if (!checkFileType(dataType, res)) return;
+	const matchedType = checkFileType(dataType);
+	if (!matchedType)
+		return res.json("Invalid data type").status(400).end();
 	
 	var path = __dirname + "/uploads/" + checksum;
 	await fs.writeFile(path, base64Data, 'base64', function (err) {
 		console.log("Writing Errors: " + err);
-		uploadFile(path, dataType, checksum, res);
+		uploadFile(path, dataType, checksum, matchedType.extension, res);
 	});
 });
 
@@ -118,7 +155,7 @@ app.post("/link-preview", function (req, res) {
 		});
 });
 
-function uploadPhoto(path, origin, checksum, res, isB64) {
+function uploadPhoto(path, origin, checksum, extname, res) {
 	var response = {};
 	//This object holds images to be uploaded
 	var images = [];
@@ -127,9 +164,9 @@ function uploadPhoto(path, origin, checksum, res, isB64) {
 	var imagePathSmall = origin + "\\" + checksum + "_sm";
 	var imagePathLarge = origin + "\\" + checksum + "_st";
 
-	var imageNameSmall = checksum;
-	var imageNameOriginal = imageNameSmall + "_or";
-	var imageNameLarge = imageNameSmall + "_st";
+	var imageNameSmall = checksum + extname;
+	var imageNameOriginal = imageNameSmall + "_or" + extname;
+	var imageNameLarge = imageNameSmall + "_st" + extname;
 
 	//addding image files and their location in an array to facilitate upload
 	images.push({
@@ -217,11 +254,11 @@ function uploadPhoto(path, origin, checksum, res, isB64) {
 	});
 }
 
-function uploadFile(path, dataType, checksum, res) {
+function uploadFile(path, dataType, checksum, extname, res) {
 	var response = {};
 
 	var imagePathOriginal = path;
-	var imageNameOriginal = checksum + "_or";
+	var imageNameOriginal = checksum + "_or" + extname;
 
 	var file = {
 		"path": imagePathOriginal,
