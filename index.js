@@ -48,6 +48,9 @@ const checkFileType = (dataType) => {
 			mimeType: 'video/x-m4v',
 			extension: '.m4v'
 		}, {
+			mimeType: 'video/quicktime',
+			extension: '.mov'
+		}, {
 			mimeType: 'image/jpg',
 			extension: '.jpg'
 		}, {
