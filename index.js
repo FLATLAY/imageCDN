@@ -21,6 +21,7 @@ app.listen(port, function () {
 const upload = require('./uploadMiddleware.js');
 var crypto = require("crypto");
 var fs = require('fs');
+const pt = require('path');
 const sharp = require('sharp');
 const AWS = require('aws-sdk');
 
@@ -59,6 +60,9 @@ const checkFileType = (dataType) => {
 		}, {
 			mimeType: 'image/jpeg',
 			extension: '.jpeg'
+		}, {
+			mimeType: 'image/svg+xml',
+			extension: '.svg'
 		}
 	];
 	const matchedType = supportedDataTypes.find(({ mimeType }) => mimeType === dataType);
@@ -68,7 +72,10 @@ const checkFileType = (dataType) => {
 
 app.post("/upload", upload.single("image"), function (req, res) {
 	const dataType = res.req.file.mimetype;
-	const matchedType = checkFileType(dataType);
+	// const matchedType = checkFileType(dataType);
+	if (!dataType.startsWith('image'))
+		return res.json("Invalid image type").status(400).end();
+	const extname = pt.extname(res.req.file.originalname);
 	var path = res.req.file.path;
 	var origin = res.req.file.destination;
 	var bitmap = fs.readFileSync(path);
@@ -78,7 +85,7 @@ app.post("/upload", upload.single("image"), function (req, res) {
 		.createHash("SHA256")
 		.update(encodedFile)
 		.digest("hex");
-	uploadPhoto(path, origin, checksum, matchedType ? matchedType.extension : '', res);
+	uploadPhoto(path, origin, checksum, { mimeType: dataType, extension: extname }, res);
 });
 
 app.post("/uploadFile", upload.single("file"), function (req, res) {
@@ -109,6 +116,8 @@ app.post("/uploadB64", async function (req, res) {
 		return res.json('Invalid input base64. Valid form: data:{dataType};base64,{base64data}').status(400).end();
 	const base64Data = matches[2];
 	const dataType = matches[1];
+	if (!dataType.startsWith('image'))
+		return res.json("Invalid image type").status(400).end();
 	const matchedType = checkFileType(dataType);
 
 	var path = __dirname + "/uploads/" + checksum;
@@ -158,7 +167,7 @@ app.post("/link-preview", function (req, res) {
 		});
 });
 
-function uploadPhoto(path, origin, checksum, extname, res) {
+function uploadPhoto(path, origin, checksum, fileType, res) {
 	var response = {};
 	//This object holds images to be uploaded
 	var images = [];
@@ -167,6 +176,7 @@ function uploadPhoto(path, origin, checksum, extname, res) {
 	var imagePathSmall = origin + "\\" + checksum + "_sm";
 	var imagePathLarge = origin + "\\" + checksum + "_st";
 
+	const extname = fileType.extension;
 	var imageNameSmall = checksum + extname;
 	var imageNameOriginal = imageNameSmall + "_or" + extname;
 	var imageNameLarge = imageNameSmall + "_st" + extname;
@@ -216,7 +226,7 @@ function uploadPhoto(path, origin, checksum, extname, res) {
 								const params = {
 									Bucket: 'upload-file-flatlay', // bucket name
 									Key: element.name, // file name
-									ContentType: 'image/png', 
+									ContentType: fileType.mimeType,
 									ACL: 'public-read',
 									Body: data
 								};
