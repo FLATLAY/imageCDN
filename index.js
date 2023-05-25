@@ -91,8 +91,8 @@ app.post("/upload", upload.single("image"), function (req, res) {
 app.post("/uploadFile", upload.single("file"), function (req, res) {
 	const dataType = res.req.file.mimetype;
 	const matchedType = checkFileType(dataType);
-	if (!matchedType)
-		return res.json("Invalid data type").status(400).end();
+	//if (!matchedType)
+		//return res.json("Invalid data type").status(400).end();
 	var path = res.req.file.path;
 	var bitmap = fs.readFileSync(path);
 	// convert binary data to base64 encoded string

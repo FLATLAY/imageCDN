@@ -15,11 +15,11 @@
     "dotenv": "^8.2.0",
     "express": "^4.17.1",
     "fs": "0.0.1-security",
+    "link-preview-js": "^2.1.6",
     "multer": "^1.4.2",
     "path": "^0.12.7",
     "sharp": "^0.25.4",
-    "uniqid": "^5.3.0",
-    "link-preview-js": "^2.1.6"
+    "uniqid": "^5.3.0"
   },
   "devDependencies": {
     "nodemon": "^2.0.6"
