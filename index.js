@@ -67,8 +67,8 @@ const checkFileType = (dataType) => {
                         mimeType: 'application/octet-stream',
                         extension: '.glb'
                 }, {
-                        mimeType: 'image/svg+xml',
-                        extension: '.svg'
+                        mimeType: 'application/postscript',
+                        extension: '.ai'
                 }
 	];
 	const matchedType = supportedDataTypes.find(({ mimeType }) => mimeType === dataType);
