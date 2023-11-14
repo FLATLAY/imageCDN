@@ -2,28 +2,30 @@ const { getLinkPreview } = require('link-preview-js');
 require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
-
+const axios = require('axios');
 const app = express();
-
 app.use(bodyParser.json({
-	limit: '50mb'
+	limit: '200mb'
 }));
 app.use(bodyParser.urlencoded({
-	limit: '50mb',
+	limit: '200mb',
 	extended: true
 }));
-
-const port = process.env.PORT || 2021;
-app.listen(port, function () {
-	console.log('Server is running on PORT', port);
-});
-
 const upload = require('./uploadMiddleware.js');
 var crypto = require("crypto");
 var fs = require('fs');
 const pt = require('path');
 const sharp = require('sharp');
 const AWS = require('aws-sdk');
+
+
+const port = process.env.PORT || 2021;
+app.listen(port, function () {
+	console.log('Server is running on PORT', port);
+});
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+
+
 
 const s3 = new AWS.S3({
 	region: process.env.REGION,
@@ -32,50 +34,27 @@ const s3 = new AWS.S3({
 });
 
 const checkFileType = (dataType) => {
-	const supportedDataTypes = [
-		{
-			mimeType: 'application/pdf',
-			extension: '.pdf'
-		}, {
-			mimeType: 'application/msword',
-			extension: '.doc'
-		}, {
-			mimeType: 'video/mp4',
-			extension: '.mp4'
-		}, {
-			mimeType: 'video/avi',
-			extension: '.avi'
-		}, {
-			mimeType: 'video/x-m4v',
-			extension: '.m4v'
-		}, {
-			mimeType: 'video/quicktime',
-			extension: '.mov'
-		}, {
-			mimeType: 'image/jpg',
-			extension: '.jpg'
-		}, {
-			mimeType: 'image/png',
-			extension: '.png'
-		}, {
-			mimeType: 'image/jpeg',
-			extension: '.jpeg'
-		}, {
-			mimeType: 'image/svg+xml',
-			extension: '.svg'
-		}, {
-                        mimeType: 'application/octet-stream',
-                        extension: '.glb'
-                }, {
-                        mimeType: 'application/postscript',
-                        extension: '.ai'
-                }
-	];
-	const matchedType = supportedDataTypes.find(({ mimeType }) => mimeType === dataType);
-		if (!matchedType) 
-			{console.log(dataType+" is not supported");	return false;}
-	return matchedType;
-};
+	const supportedDataTypes = {
+	  'application/pdf': '.pdf',
+	  'application/msword': '.doc',
+	  'video/mp4': '.mp4',
+	  'video/avi': '.avi',
+	  'video/x-m4v': '.m4v',
+	  'video/quicktime': '.mov',
+	  'image/jpg': '.jpg',
+	  'image/png': '.png',
+	  'image/jpeg': '.jpeg',
+	  'image/svg+xml': '.svg',
+	  'application/octet-stream': '.glb',
+	  'application/postscript': '.ai'
+	};
+	const matchedType = supportedDataTypes[dataType];
+	if (!matchedType) {
+	  console.log(dataType + ' is not supported');
+	  return false;
+	}
+	return { mimeType: dataType, extension: matchedType };
+  };
 
 app.post("/upload", upload.single("image"), function (req, res) {
 	const dataType = res.req.file.mimetype;
