@@ -2,8 +2,9 @@ const { getLinkPreview } = require('link-preview-js');
 require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
-const axios = require('axios');
+
 const app = express();
+
 app.use(bodyParser.json({
 	limit: '200mb'
 }));
@@ -23,31 +24,32 @@ const port = process.env.PORT || 2021;
 app.listen(port, function () {
 	console.log('Server is running on PORT', port);
 });
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-
-
 
 const s3 = new AWS.S3({
 	region: process.env.REGION,
 	accessKeyId: process.env.ACCESSKEYID,
 	secretAccessKey: process.env.SECRETACCESSKEY
 });
+const supportedDataTypes = {
+	'application/pdf': '.pdf',
+	'application/msword': '.doc',
+	'video/mp4': '.mp4',
+	'video/avi': '.avi',
+	'video/x-m4v': '.m4v',
+	'video/quicktime': '.mov',
+	'image/jpg': '.jpg',
+	'image/png': '.png',
+	'image/jpeg': '.jpeg',
+	'image/svg+xml': '.svg',
+	'application/octet-stream': '.glb',
+	'application/postscript': '.ai',
+	'text/javascript': '.js',
+	'text/css': '.css',
+	'application/javascript': '.js',
+	'application/css': '.css',
+  };
 
 const checkFileType = (dataType) => {
-	const supportedDataTypes = {
-	  'application/pdf': '.pdf',
-	  'application/msword': '.doc',
-	  'video/mp4': '.mp4',
-	  'video/avi': '.avi',
-	  'video/x-m4v': '.m4v',
-	  'video/quicktime': '.mov',
-	  'image/jpg': '.jpg',
-	  'image/png': '.png',
-	  'image/jpeg': '.jpeg',
-	  'image/svg+xml': '.svg',
-	  'application/octet-stream': '.glb',
-	  'application/postscript': '.ai'
-	};
 	const matchedType = supportedDataTypes[dataType];
 	if (!matchedType) {
 	  console.log(dataType + ' is not supported');
