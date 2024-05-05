@@ -92,6 +92,22 @@ app.post("/uploadFile", upload.single("file"), function (req, res) {
 	uploadFile(path, dataType, checksum, matchedType.extension, res);
 });
 
+//this method wont check the mimetype and allow all kinds of files... dont use it on frontend
+app.post("/uploadInternal", upload.single("file"), function (req, res) {
+	const dataType = res.req.file.mimetype;
+	var path = res.req.file.path;
+	const extname = pt.extname(res.req.file.originalname);
+	var bitmap = fs.readFileSync(path);
+	// convert binary data to base64 encoded string
+	var encodedFile = new Buffer.from(bitmap).toString('base64');
+	var checksum = crypto
+		.createHash("SHA256")
+		.update(encodedFile)
+		.digest("hex");
+	uploadFile(path, dataType, checksum, extname, res);
+});
+
+
 app.post("/uploadB64", async function (req, res) {
 	var origin = __dirname + "/uploads";
 	var checksum = crypto
